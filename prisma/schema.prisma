@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id            Int     @id @default(autoincrement())
+  email         String  @unique
+  accountNumber String
+  orders        Order[]
+}
+
+model Instruments {
+  id    Int     @id @default(autoincrement())
+  ticker String @unique
+  name   String
+  type   String
+  orders Order[]
+  marketData MarketData[]
+}
+
+model Orders {
+  id           Int      @id @default(autoincrement())
+  instrumentId Int
+  userId       Int
+  size         Int
+  price        Decimal
+  type         String
+  side         String
+  status       String
+  datetime     DateTime
+  instrument   Instrument @relation(fields: [instrumentId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+}
+
+model MarketData {
+  id             Int      @id @default(autoincrement())
+  instrumentId   Int
+  high           Decimal?
+  low            Decimal?
+  open           Decimal?
+  close          Decimal
+  previousClose  Decimal
+  date           DateTime
+  instrument     Instrument @relation(fields: [instrumentId], references: [id])
+}
