@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateAccountDto } from './dto/create-account.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -7,10 +6,6 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class AccountService {
 
   constructor (private prismaService: PrismaService){}
-
-  create(createAccountDto: CreateAccountDto) {
-    return 'This action adds a new account';
-  }
 
   findAll() {
     return this.prismaService.user.findMany();
