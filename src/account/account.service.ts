@@ -1,17 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { AccountResponseDto, AssetDto, AccountSummaryDto } from './dto/account-response.dto';
 
 @Injectable()
 export class AccountService {
 
   constructor (private prismaService: PrismaService){}
 
-  findAll() {
-    return this.prismaService.user.findMany();
-  }
-
-  async findOne(email: string) {
+  async findOne(email: string): Promise<AccountResponseDto>{
     const userFound = await this.prismaService.user.findUnique({
       where: {
         email: email
@@ -26,17 +23,21 @@ export class AccountService {
     const assets = await this.getAssets(userFound.id);
     const totalAccountValue = availableCash + assets.reduce((acc, asset) => acc + asset.totalValue, 0);
 
-    return {
+    const resumenCuenta: AccountSummaryDto = {
       dineroDisponible: this.formatCurrency(availableCash),
       valorTotalCuenta: this.formatCurrency(totalAccountValue),
-      activos: assets.map(asset => ({
-        instrumentId: asset.instrumentId,
-        ticker: asset.ticker,
-        name: asset.name,
-        cantidad: asset.quantity,
-        valorTotalPosicion: this.formatCurrency(asset.totalValue),
-        rendimientoTotal: this.formatPercentage(asset.rendimiento),
-      }))};
+    };
+  
+    const activos: AssetDto[] = assets.map(asset => ({
+      instrumentId: asset.instrumentId,
+      ticker: asset.ticker,
+      nombre: asset.name,
+      cantidad: asset.quantity,
+      valorTotalPosicion: this.formatCurrency(asset.totalValue),
+      rendimientoTotal: this.formatPercentage(asset.rendimiento),
+    }));
+  
+    return { resumenCuenta, activos }
   }
 
   private async getAvailableCash(userId): Promise<number>{
@@ -53,7 +54,7 @@ export class AccountService {
     return (cashIn._sum.size || 0) - (cashOut._sum.size || 0);
   }
 
-  async getAssets(userId: number) {
+  private async getAssets(userId: number) {
     const orderFound = await this.prismaService.order.groupBy({
       by: ['instrumentId'],
       where: { userId, side: { in: ['BUY', 'SELL'] }, status: 'FILLED' },
