@@ -23,9 +23,13 @@ export class InstrumentService {
     const instrument = await this.prismaService.instrument.findMany({ where });
 
     if(!instrument || instrument.length === 0){
-      throw new NotFoundException(`Instrument with ticker or name not exist`);
+      throw new NotFoundException('Instrument with ticker or name not exist');
     }
       
-      return instrument;
+    return instrument;
+  }
+
+  async findAll(){
+    return await this.prismaService.instrument.findMany();
   }
 }

@@ -13,4 +13,9 @@ export class InstrumentController {
     return this.instrumentService.find({ticker, name});
   }
 
+  @Get('searchAll')
+  findAll() {
+    return this.instrumentService.findAll();
+  }
+
 }
