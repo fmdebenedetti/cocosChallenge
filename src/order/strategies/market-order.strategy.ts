@@ -3,7 +3,6 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderStrategy } from '../interfaces/order-strategy.interface';
-import { Order } from '@prisma/client';
 
 @Injectable()
 export class MarketOrderStrategy implements OrderStrategy {

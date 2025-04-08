@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
-import { AssetDto } from "../dto/account-response.dto";
 import { Decimal } from "@prisma/client/runtime/library";
+import { OrderSide } from "src/order/enums/order-side.enums";
 
 @Injectable()
 export class AssetService {
@@ -10,7 +10,7 @@ export class AssetService {
   async getAssets(userId: number){
     const orderFound = await this.prismaService.order.groupBy({
         by: ['instrumentId'],
-        where: { userId, side: { in: ['BUY', 'SELL'] }, status: 'FILLED' },
+        where: { userId, side: { in: [OrderSide.BUY, OrderSide.SELL] }, status: OrderSide.FILLED },
         _sum: { size: true },
     });
       

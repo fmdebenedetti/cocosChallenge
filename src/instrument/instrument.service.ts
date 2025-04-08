@@ -28,8 +28,4 @@ export class InstrumentService {
       
     return instrument;
   }
-
-  async findAll(){
-    return await this.prismaService.instrument.findMany();
-  }
 }

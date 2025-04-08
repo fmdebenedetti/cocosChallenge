@@ -10,6 +10,12 @@ export enum OrderSide {
   SELL = 'SELL',
 }
 
+export enum OrderStatus {
+  FILLED = 'FILLED',
+  NEW = 'NEW',
+  REJECTED = 'REJECTED'
+}
+
 export class CreateOrderDto {
   @IsNotEmpty()
   @IsNumber()

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { OrderType } from '../dto/create-order.dto';
 import { MarketOrderStrategy } from './market-order.strategy';
 import { LimitOrderStrategy } from './limit-order.strategy';
@@ -18,7 +18,7 @@ export class OrderStrategyFactory {
       case OrderType.LIMIT:
         return this.limitOrder;
       default:
-        throw new Error('Tipo de orden no soportado');
+        throw new BadRequestException('Tipo de orden no soportado');
     }
   }
 }
