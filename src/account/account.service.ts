@@ -1,115 +1,46 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Decimal } from '@prisma/client/runtime/library';
 import { AccountResponseDto, AssetDto, AccountSummaryDto } from './dto/account-response.dto';
+import { AssetService } from './services/asset.service';
+import { FormatterService } from './services/formatter.service';
+import { CashService } from './services/cash.service';
 
 @Injectable()
 export class AccountService {
 
-  constructor (private prismaService: PrismaService){}
+  constructor(
+    private prisma: PrismaService,
+    private cashService: CashService,
+    private assetService: AssetService,
+    private formatter: FormatterService,
+  ) {}
 
-  async findOne(email: string): Promise<AccountResponseDto>{
-    const userFound = await this.prismaService.user.findUnique({
-      where: {
-        email: email
-      }
-    });
+  async findOne(email: string): Promise<AccountResponseDto> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException(`User with email ${email} not exist`);
 
-    if(!userFound){
-      throw new NotFoundException(`User with email ${email} not exist`);
-    }
+    const [availableCash, assets] = await Promise.all([
+      this.cashService.getAvailableCash(user.id),
+      this.assetService.getAssets(user.id),
+    ]);
 
-    const availableCash = await this.getAvailableCash(userFound.id);
-    const assets = await this.getAssets(userFound.id);
-    const totalAccountValue = availableCash + assets.reduce((acc, asset) => acc + asset.totalValue, 0);
+    const totalAccountValue = availableCash + assets.reduce((acc, a) => acc + a.totalValue, 0);
 
     const resumenCuenta: AccountSummaryDto = {
-      dineroDisponible: this.formatCurrency(availableCash),
-      valorTotalCuenta: this.formatCurrency(totalAccountValue),
+      dineroDisponible: this.formatter.formatCurrency(availableCash),
+      valorTotalCuenta: this.formatter.formatCurrency(totalAccountValue),
     };
-  
-    const activos: AssetDto[] = assets.map(asset => ({
-      instrumentId: asset.instrumentId,
-      ticker: asset.ticker,
-      nombre: asset.name,
-      cantidad: asset.quantity,
-      valorTotalPosicion: this.formatCurrency(asset.totalValue),
-      rendimientoTotal: this.formatPercentage(asset.rendimiento),
+
+    const activos: AssetDto[] = assets.map(a => ({
+      instrumentId: a.instrumentId,
+      ticker: a.ticker,
+      nombre: a.name,
+      cantidad: a.quantity,
+      valorTotalPosicion: this.formatter.formatCurrency(a.totalValue),
+      rendimientoTotal: this.formatter.formatPercentage(a.rendimiento),
     }));
-  
-    return { resumenCuenta, activos }
-  }
 
-  private async getAvailableCash(userId): Promise<number>{
-    const cashIn = await this.prismaService.order.aggregate({
-      where: { userId, side: 'CASH_IN', status: 'FILLED' },
-      _sum: { size: true },
-    });
-    
-    const cashOut = await this.prismaService.order.aggregate({
-      where: { userId, side: 'CASH_OUT', status: 'FILLED' },
-      _sum: { size: true },
-    });
-    
-    return (cashIn._sum.size || 0) - (cashOut._sum.size || 0);
-  }
-
-  private async getAssets(userId: number) {
-    const orderFound = await this.prismaService.order.groupBy({
-      by: ['instrumentId'],
-      where: { userId, side: { in: ['BUY', 'SELL'] }, status: 'FILLED' },
-      _sum: { size: true },
-    });
-  
-    const assets = await Promise.all(
-      orderFound.map(async (pos) => {
-        const instrument = await this.prismaService.instrument.findUnique({
-          where: { id: pos.instrumentId },
-        });
-  
-        const marketData = await this.prismaService.marketData.findFirst({
-          where: { instrumentId: pos.instrumentId },
-          orderBy: { date: 'desc' },
-        });
-  
-        const quantity = new Decimal(pos._sum.size || 0).toNumber();
-        const closePrice = new Decimal(marketData?.close || 0).toNumber();
-        const totalValue = quantity * closePrice;
-  
-        const rendimiento = marketData?.previousClose
-          ? ((closePrice - new Decimal(marketData.previousClose).toNumber()) /
-              new Decimal(marketData.previousClose).toNumber()) * 100
-          : 0;
-  
-        return {
-          instrumentId: pos.instrumentId,
-          ticker: instrument?.ticker,
-          name: instrument?.name,
-          quantity,
-          totalValue: totalValue,
-          rendimiento: rendimiento,
-        };
-      })
-    );
-  
-    return assets;
-  }
-
-  private formatCurrency(value: number): string {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-
-  private formatPercentage(value: number): string {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'percent',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value / 100);
+    return { resumenCuenta, activos };
   }
 
 }
